@@ -4,8 +4,9 @@ const router = express.Router();
 
 // Helper function to extract the download link
 const extractDownloadLink = (html) => {
-  const match = html.match(/href="(https:\/\/[^"]+\.jpg)"/); // Extract the .jpg URL
-  return match ? match[1] : null;
+  // Adjust regex to match the correct URL pattern
+  const match = html.match(/https:\/\/e[0-9]\.yotools\.net\/save-image\/[a-zA-Z0-9]+\.jpg\/\d+/);
+  return match ? match[0] : null;
 };
 
 // Define the /api/generate-effect route
