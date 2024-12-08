@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { extractDownloadLink } = require("./helpers");
+const { extractDownloadLink } = require("./helpers.js");
 
 exports.generateEffect = async (req, res) => {
   const { text, background } = req.body;
