@@ -1,7 +1,10 @@
 const express = require("express");
 const axios = require("axios");
+const tough = require("tough-cookie"); // For cookie management
+const axiosCookieJarSupport = require("axios-cookiejar-support").default;
 
 const router = express.Router();
+axiosCookieJarSupport(axios);
 
 // Helper function to extract the download link
 const extractDownloadLink = (html) => {
@@ -19,8 +22,17 @@ router.get("/generate-effect", async (req, res) => {
       return res.status(400).json({ error: "Text and background are required" });
     }
 
-    // Verify the parameters
-    console.log(`Generating effect with text: ${text}, background: ${background}`);
+    // Setup axios instance with cookie jar
+    const cookieJar = new tough.CookieJar();
+    const client = axios.create({
+      jar: cookieJar,
+      withCredentials: true,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+        Referer: "https://en.ephoto360.com/handwritten-text-on-foggy-glass-online-680.html",
+      },
+    });
 
     // Prepare form data for the API request
     const formData = new URLSearchParams();
@@ -31,11 +43,13 @@ router.get("/generate-effect", async (req, res) => {
     formData.append("build_server_id", "2");
     formData.append("submit", "GO");
 
+    // Log the form data for debugging
+    console.log("Form data:", formData.toString());
+
     // Send the POST request to the ePhoto360 API
-    const response = await axios.post(
+    const response = await client.post(
       "https://en.ephoto360.com/handwritten-text-on-foggy-glass-online-680.html",
-      formData.toString(), // Correctly formatted form data
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      formData.toString()
     );
 
     // Log the raw HTML response for debugging
