@@ -19,6 +19,9 @@ router.get("/generate-effect", async (req, res) => {
       return res.status(400).json({ error: "Text and background are required" });
     }
 
+    // Verify the parameters
+    console.log(`Generating effect with text: ${text}, background: ${background}`);
+
     // Prepare form data for the API request
     const formData = new URLSearchParams();
     formData.append("text[]", text);
@@ -31,9 +34,12 @@ router.get("/generate-effect", async (req, res) => {
     // Send the POST request to the ePhoto360 API
     const response = await axios.post(
       "https://en.ephoto360.com/handwritten-text-on-foggy-glass-online-680.html",
-      formData,
+      formData.toString(), // Correctly formatted form data
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
+
+    // Log the raw HTML response for debugging
+    console.log("Raw HTML response:", response.data);
 
     // Extract the download link from the response HTML
     const downloadLink = extractDownloadLink(response.data);
@@ -49,7 +55,7 @@ router.get("/generate-effect", async (req, res) => {
       download_link: downloadLink,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error generating effect:", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
