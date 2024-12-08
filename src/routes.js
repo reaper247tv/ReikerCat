@@ -23,14 +23,23 @@ const textMaker = async (effect_url, text, background) => {
       },
     });
 
-    // Extract the download link using regex
-    const match = response.data.match(
-      /https:\/\/e[0-9]\.yotools\.net\/save-image\/[a-zA-Z0-9]+\.jpg\/\d+/
+    // Log response data for debugging
+    console.log("Response Data:", response.data);
+
+    // Dynamically extract the download link for both URL patterns
+    const downloadMatch = response.data.match(
+      /https:\/\/e[0-9]\.yotools\.net\/(save-image\/[a-zA-Z0-9]+\.jpg\/\d+|images\/user_image\/\d{4}\/\d{2}\/[a-zA-Z0-9]+\.jpg)/
     );
-    return match ? { status: true, url: match[0] } : { status: false };
+    if (downloadMatch && downloadMatch[0]) {
+      console.log("Download URL found:", downloadMatch[0]);
+      return { status: true, url: downloadMatch[0] };
+    }
+
+    console.error("Download URL not found in response.");
+    return { status: false };
   } catch (error) {
     console.error("Error in textMaker:", error.message);
-    return { status: false };
+    return { status: false, error: error.message };
   }
 };
 
@@ -61,11 +70,11 @@ router.get("/generate-effect", async (req, res) => {
     }
 
     // Generate the effect
-    const { status, url } = await textMaker(effect_url, text, background);
+    const { status, url, error } = await textMaker(effect_url, text, background);
     if (status && url) {
       return res.status(200).json({ success: true, text, effect, download_link: url });
     } else {
-      return res.status(500).json({ error: "Failed to generate effect" });
+      return res.status(500).json({ error: "Failed to generate effect", details: error });
     }
   } catch (error) {
     console.error("Error in /generate-effect route:", error.message);
