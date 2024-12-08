@@ -3,18 +3,18 @@ const axios = require("axios");
 const router = express.Router();
 
 // Utility function to generate text effects
-const textMaker = async (effect_url, text, background) => {
+const textMaker = async (effect_url, text, background = null) => {
   try {
     // Prepare form data
     const formData = new URLSearchParams();
-    formData.append("text[]", text);
-    if (background) formData.append("radio0[radio]", background); // Include background if needed
+    formData.append("text[]", text); // Input text
+    if (background) formData.append("radio0[radio]", background); // Optional background
     formData.append("token", "da350dfbad6903a02bd78d6e461ff942");
     formData.append("build_server", "https://e1.yotools.net");
     formData.append("build_server_id", "2");
     formData.append("submit", "GO");
 
-    // Send the POST request
+    // Send the POST request to the effect_url
     const response = await axios.post(effect_url, formData.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -23,27 +23,21 @@ const textMaker = async (effect_url, text, background) => {
       },
     });
 
-    // Log response data for debugging
-    console.log("Response Data:", response.data);
-
-    // Dynamically extract the download link for both URL patterns
-    const downloadMatch = response.data.match(
+    // Extract the download URL dynamically from the response
+    const match = response.data.match(
       /https:\/\/e[0-9]\.yotools\.net\/(save-image\/[a-zA-Z0-9]+\.jpg\/\d+|images\/user_image\/\d{4}\/\d{2}\/[a-zA-Z0-9]+\.jpg)/
     );
-    if (downloadMatch && downloadMatch[0]) {
-      console.log("Download URL found:", downloadMatch[0]);
-      return { status: true, url: downloadMatch[0] };
+    if (match && match[0]) {
+      return { status: true, url: match[0] };
     }
 
-    console.error("Download URL not found in response.");
-    return { status: false };
+    return { status: false, error: "Download URL not found in response." };
   } catch (error) {
-    console.error("Error in textMaker:", error.message);
     return { status: false, error: error.message };
   }
 };
 
-// Define the /api/generate-effect route
+// Route handler to dynamically generate effects
 router.get("/generate-effect", async (req, res) => {
   try {
     const { text, effect, background } = req.query;
@@ -63,13 +57,13 @@ router.get("/generate-effect", async (req, res) => {
       "8bit": "https://photooxy.com/logo-and-text-effects/8-bit-text-on-arcade-rift-175.html",
     };
 
-    // Check if the effect is supported
+    // Validate the effect
     const effect_url = effectUrls[effect.toLowerCase()];
     if (!effect_url) {
       return res.status(400).json({ error: "Invalid effect type" });
     }
 
-    // Generate the effect
+    // Generate the effect and fetch the download link
     const { status, url, error } = await textMaker(effect_url, text, background);
     if (status && url) {
       return res.status(200).json({ success: true, text, effect, download_link: url });
@@ -77,8 +71,7 @@ router.get("/generate-effect", async (req, res) => {
       return res.status(500).json({ error: "Failed to generate effect", details: error });
     }
   } catch (error) {
-    console.error("Error in /generate-effect route:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error", details: error.message });
   }
 });
 
