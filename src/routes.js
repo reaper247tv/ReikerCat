@@ -14,7 +14,7 @@ const textMaker = async (effect_url, text, background = null) => {
     formData.append("build_server_id", "2");
     formData.append("submit", "GO");
 
-    // Send the POST request to the effect_url
+    // Send the POST request to the effect URL
     const response = await axios.post(effect_url, formData.toString(), {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -23,16 +23,23 @@ const textMaker = async (effect_url, text, background = null) => {
       },
     });
 
-    // Extract the download URL dynamically from the response
+    // Log response data for debugging
+    console.log("Response Data:", response.data);
+
+    // Updated regex for download URL patterns
     const match = response.data.match(
-      /https:\/\/e[0-9]\.yotools\.net\/(save-image\/[a-zA-Z0-9]+\.jpg\/\d+|images\/user_image\/\d{4}\/\d{2}\/[a-zA-Z0-9]+\.jpg)/
+      /https:\/\/e[0-9]\.yotools\.net\/(save-image\/[a-zA-Z0-9_-]+\.jpg\/\d+|images\/user_image\/\d{4}\/\d{2}\/[a-zA-Z0-9_-]+\.jpg)/
     );
+
     if (match && match[0]) {
+      console.log("Download URL found:", match[0]);
       return { status: true, url: match[0] };
     }
 
+    console.error("Download URL not found in response.");
     return { status: false, error: "Download URL not found in response." };
   } catch (error) {
+    console.error("Error in textMaker:", error.message);
     return { status: false, error: error.message };
   }
 };
@@ -57,7 +64,7 @@ router.get("/generate-effect", async (req, res) => {
       "8bit": "https://photooxy.com/logo-and-text-effects/8-bit-text-on-arcade-rift-175.html",
     };
 
-    // Validate the effect
+    // Validate the effect type
     const effect_url = effectUrls[effect.toLowerCase()];
     if (!effect_url) {
       return res.status(400).json({ error: "Invalid effect type" });
@@ -71,7 +78,8 @@ router.get("/generate-effect", async (req, res) => {
       return res.status(500).json({ error: "Failed to generate effect", details: error });
     }
   } catch (error) {
-    return res.status(500).json({ error: "Internal server error", details: error.message });
+    console.error("Error in /generate-effect route:", error.message);
+    res.status(500).json({ error: "Internal server error", details: error.message });
   }
 });
 
