@@ -1,8 +1,34 @@
 const express = require("express");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
+const FormData = require("form-data");
 const router = express.Router();
 
-// Utility function to generate text effects
+// Utility function to upload an image to Catbox
+const uploadToCatbox = async (filePath) => {
+  try {
+    const formData = new FormData();
+    formData.append("reqtype", "fileupload");
+    formData.append("fileToUpload", fs.createReadStream(filePath));
+
+    const response = await axios.post("https://catbox.moe/user/api.php", formData, {
+      headers: formData.getHeaders(),
+    });
+
+    // Response from Catbox contains the hosted image URL
+    if (response.status === 200) {
+      return response.data.trim(); // Return the Catbox URL
+    } else {
+      throw new Error("Failed to upload image to Catbox.");
+    }
+  } catch (error) {
+    console.error("Error uploading to Catbox:", error.message);
+    throw error;
+  }
+};
+
+// Utility function to generate text effects and upload to Catbox
 const textMaker = async (effect_url, text, background = null) => {
   try {
     // Prepare form data
@@ -21,23 +47,21 @@ const textMaker = async (effect_url, text, background = null) => {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
         Referer: effect_url,
       },
+      responseType: "arraybuffer", // Ensure we get the image as a buffer
     });
 
-    // Log response data for debugging
-    console.log("Response Data:", response.data);
+    // Save the image to the server temporarily
+    const fileName = `generated_${Date.now()}.jpg`;
+    const filePath = path.join(__dirname, "images", fileName);
+    fs.writeFileSync(filePath, response.data);
 
-    // Updated regex for download URL patterns
-    const match = response.data.match(
-      /https:\/\/e[0-9]\.yotools\.net\/(save-image\/[a-zA-Z0-9_-]+\.jpg\/\d+|images\/user_image\/\d{4}\/\d{2}\/[a-zA-Z0-9_-]+\.jpg)/
-    );
+    // Upload the image to Catbox
+    const catboxUrl = await uploadToCatbox(filePath);
 
-    if (match && match[0]) {
-      console.log("Download URL found:", match[0]);
-      return { status: true, url: match[0] };
-    }
+    // Remove the temporary image file
+    fs.unlinkSync(filePath);
 
-    console.error("Download URL not found in response.");
-    return { status: false, error: "Download URL not found in response." };
+    return { status: true, url: catboxUrl }; // Return the Catbox URL
   } catch (error) {
     console.error("Error in textMaker:", error.message);
     return { status: false, error: error.message };
@@ -70,7 +94,7 @@ router.get("/generate-effect", async (req, res) => {
       return res.status(400).json({ error: "Invalid effect type" });
     }
 
-    // Generate the effect and fetch the download link
+    // Generate the effect and fetch the hosted download link
     const { status, url, error } = await textMaker(effect_url, text, background);
     if (status && url) {
       return res.status(200).json({ success: true, text, effect, download_link: url });
